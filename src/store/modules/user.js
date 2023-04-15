@@ -1,4 +1,4 @@
- import {USER_LOGIN,INIT_USER} from './mutations-types.js'
+ import {USER_LOGIN,INIT_USER,LOGIN_OUT} from './mutations-types.js'
  export default{
 	 //state共享数据
 	state:{
@@ -25,7 +25,7 @@
 			}
 		},
 		//退出登录
-		loginOut( state ){
+		[LOGIN_OUT]( state ){
 			state.loginStatus = false;
 			state.token = null;
 			state.userInfo = {};

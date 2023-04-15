@@ -61,7 +61,7 @@
 			</div>
 		</section>
 		<footer>
-			<div class='add-cart'>加入购物车</div>
+			<div class='add-cart' @click='addCart'>加入购物车</div>
 			<div >立即购买</div>
 		</footer>
 	</div>
@@ -72,6 +72,7 @@ import 'swiper/dist/css/swiper.css'
 import BetterScroll from 'better-scroll'
 import { swiper, swiperSlide } from 'vue-awesome-swiper'
 import http from '@/common/api/request.js'
+import { Toast } from 'mint-ui';
 export default{
 	data(){
 	  return{
@@ -153,6 +154,26 @@ export default{
 			})
 			console.log(res)
 			this.goods = res;
+		},
+		// 加入购物车
+		addCart(){
+		    let id = this.$route.query.id;
+		    http.$axios({
+		        url:'/api/addCart',
+		        method:"post",
+		        data:{
+		            goodsId:id
+		        },
+		        headers:{
+		            token:true
+		        }
+		    }).then(res=>{
+				// console.log(res)
+		        if( res.success ){
+		            Toast('添加购物车成功');
+		        }
+				
+		    })
 		},
 		//返回上一页
 		goBack(){

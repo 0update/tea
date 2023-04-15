@@ -6,6 +6,7 @@
 				:key='index'
 				@click='switchTab(item.path)'
 			>
+				<!-- <div>{{$route.path}}</div> -->			
 				<img :src="$route.path.includes(item.path) ? item.selected : item.active" alt="">
 				<span :class='$route.path.includes(item.path) ? "active" : "" '>{{item.title}}</span>
 			</li>
@@ -54,7 +55,7 @@ export default{
 			//判断是否点击的是同一个路由
 			if( this.$route.path == path ) return;
 			//对应跳转页面
-			this.$router.replace( path );
+			this.$router.push( path );
 		}
 	}
 }

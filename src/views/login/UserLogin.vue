@@ -1,6 +1,5 @@
 <template>
 	<div class='login container'>
-		<button @click="USER_LOGIN">test</button>
 		<Header></Header>
 		<section>
 			<div class='login-tel'>
@@ -52,7 +51,7 @@ export default{
 		Tabbar
 	},
 	methods:{
-	...mapMutations(['USER_LOGIN']),
+	...mapMutations(['userLogin']),
 		//找回密码
 		goRecovery(){
 			this.$router.push('/recovery');
@@ -77,7 +76,7 @@ export default{
 			//登录失败
 			if( !res.success ) return;
 			//登录成功 ==》跳转页面，存储用户信息		
-			this.USER_LOGIN( res.data );
+			this.userLogin( res.data );
 			//跳转到我的页面中
 			this.$router.push('/my');
 		})

@@ -3,10 +3,115 @@ var router = express.Router();
 var connection=require('../db/sql');
 var user=require('../db/userSql');
 var QcloudSms = require("qcloudsms_js");
+let jwt = require('jsonwebtoken');
 
 router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
 });
+//修改购物车的数据
+router.post('/api/updateNum',function(req,res,next){
+	let id = req.body.id;
+	let changeNum = req.body.num;
+	
+	connection.query(`select * from goods_cart where id = ${id}`,function(error,results){
+	    //原来的数量
+	    let num = results[0].goods_num;
+	    connection.query(`update goods_cart set goods_num = replace(goods_num,${num},${changeNum}) where id = ${id}`,function(err,result){
+	        res.send({
+	            data:{
+	                code:200,
+	                success:true
+	            }
+	        })
+	    })
+	})
+})
+//删除购物车数据
+router.post('/api/deleteCart',function(req,res,next){
+    let arrId = req.body.arrId;
+    
+    for(let i=0;i<arrId.length;i++){
+        connection.query(`delete from goods_cart where id = ${arrId[i]}`,function(error,results){
+            res.send({
+                data:{
+                    code:200,
+                    success:true,
+                    msg:'删除成功'
+                }
+            })
+        })
+    }
+})
+
+//查询购物车数据
+router.post('/api/selectCart',function(req,res,next){
+    //token
+    let token = req.headers.token;
+    let tokenObj = jwt.decode(token);
+    //查询用户
+    connection.query(`select * from user where tel = ${tokenObj.tel}`,function(error,results){
+        //用户id
+        let uId = results[0].id;
+        //查询购物车
+        connection.query(`select * from goods_cart where uId = ${uId}`,function(err,result){
+            res.send({
+                data:{
+                    code:200,
+                    success:true,
+                    data:result
+                }
+            })
+        })
+    })
+})
+
+//添加购物车数据
+router.post('/api/addCart',function(req,res,next){
+    //后端接收前端的参数
+    let goodsId = req.body.goodsId;
+    //token
+    let token = req.headers.token;
+    let tokenObj = jwt.decode(token);
+    //查询用户
+    connection.query(`select * from user where tel = ${tokenObj.tel}`,function(error,results){
+        //用户id
+        let uId = results[0].id;
+        //查询商品
+        connection.query(`select * from goods_list where id=${goodsId}`,function(err,result){
+            let goodsName = result[0].name;
+            let goodsPrice = result[0].price;
+            let goodsImgUrl = result[0].imgUrl;
+            //查询当前用户在之前是否添加过本商品
+            connection.query(`select * from goods_cart where uId=${uId} and goods_id=${goodsId}`,function(e,r){
+                //用户之前是添加过商品到购物车
+                if( r.length > 0 ){
+                    let num = r[0].goods_num;
+                    connection.query(`update goods_cart set goods_num = replace(goods_num,${num},${parseInt(num) + 1}) where id = ${r[0].id}`,function(e,datas){
+                        res.send({
+                            data:{
+                                code:200,
+                                success:true,
+                                msg:'添加成功'
+                            }
+                        })
+                    })
+                }else{
+                    //没有
+                    connection.query(`insert into goods_cart (uId,goods_id,goods_name,goods_price,goods_num,goods_imgUrl) values ("${uId}","${goodsId}","${goodsName}","${goodsPrice}","1","${goodsImgUrl}")`,function(){
+                       res.send({
+                           data:{
+                               code:200,
+                               success:true,
+                               msg:'添加成功'
+                           }
+                       }) 
+                    })
+                }
+            })
+        })
+    })
+})
+
 //修改密码
 router.post('/api/recovery',function(req,res,next){
 	
@@ -31,8 +136,6 @@ router.post('/api/recovery',function(req,res,next){
 			})
 		})
 	})
-	
-	
 })
 //修改密码前查询用户是否存在
 router.post('/api/selectUser',function(req,res,next){
@@ -99,7 +202,6 @@ router.post('/api/register',function(req,res,next){
 	})
 	
 })
-
 
 //增加一个用户
 router.post('/api/addUser',function(req,res,next){

@@ -69,6 +69,9 @@ const routes = [
   {
     path: "/detail",
     name: "Detail",
+	meta: {
+	    keepAlive: true
+	},
     component: () =>
       import("../views/Detail.vue"),
   },

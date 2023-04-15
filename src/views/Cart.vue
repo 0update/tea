@@ -1,62 +1,115 @@
 <template>
 	<div class='cart container'>
         <header>
-            <i class='iconfont icon-fanhui'></i>
+            <i class='iconfont icon-fanhui' @click="$router.back()"></i>
             <span>购物车</span>
-            <span>编辑</span>
+            <span @click='isNavBar' v-text='isNavStatus ? "完成":"编辑"'></span>
         </header>
         <section>
             <div class='cart-title'>
-                <van-checkbox v-model="checked"></van-checkbox>
+                <van-checkbox  @click='checkAllFn' :value="isCheckedAll"></van-checkbox>
                 <span>商品</span>
             </div>
             <ul>
-                <li>
+                <li v-for='(item,index) in list' :key='index'>
                     <div class='check'>
-                        <van-checkbox v-model="checked"></van-checkbox>
+                        <van-checkbox @click='checkItem(index)' v-model="item.checked"></van-checkbox>
                     </div>
                     <h2>
-                        <img src="../../public/images/like.jpeg" alt="">
+                        <img :src="item.goods_imgUrl" alt="">
                     </h2>
                     <div class='goods'>
                         <div class='goods-title'>
-                            <span>盒装  武夷山原产地 全芽灰芽花香金骏眉 3號150g </span>
-                            <i class='iconfont icon-lajitong'></i>
+                            <span>{{item.goods_name}}</span>
+                            <i class='iconfont icon-lajitong' @click='delGoodsFn(item.id)'></i>
                         </div>
-                        <div class='goods-price'>¥128.00</div>
-                        <van-stepper v-model="value" integer />
+                        <div class='goods-price'>¥{{item.goods_price}}</div>
+                        <van-stepper @change='changeNum($event,item)' v-model="item.goods_num" integer />
                     </div>
                 </li>
             </ul>
         </section>
         <footer>
             <div class='radio'>
-                <van-checkbox v-model="checked"></van-checkbox>
+				<!-- value收集到的是选中和未选中的值 -->
+                <van-checkbox @click='checkAllFn' :value="isCheckedAll"></van-checkbox>
             </div>
-            <div class='total'>
+            <div class='total' v-show='!isNavStatus'>
                 <div>
                     共有
-                    <span class='total-active'>1</span>
+                    <span class='total-active'>{{total.num}}</span>
                     件商品
                 </div>
                 <div>
                     <span>总计：</span>
-                    <span class='total-active'>¥128.00 + 0茶币</span>
+                    <span class='total-active'>¥{{total.price.toFixed(2)}} + 0茶币</span>
                 </div>
             </div>
-            <div class='order'>去结算</div>
+			<div class='order' v-if='isNavStatus' @click='delGoodsFn'>删除</div>
+            <div class='order' v-else>去结算</div>
         </footer>
 	</div>
 </template>
 
 <script>
+import {mapState,mapMutations,mapGetters,mapActions} from 'vuex'
+import http from '@/common/api/request.js'
 export default {
     name: "Cart",
     data () {
         return {
-            checked:true
+			isNavStatus:false,
+            checked:true,
         }
-    }
+    },
+	created(){
+	    this.getData();
+	},
+	computed:{
+	 ...mapState({
+	     list:state=>state.cart.list
+	 }) ,
+	 ...mapGetters(['isCheckedAll','total'])
+	},
+	 methods:{
+		...mapMutations(['cartList','checkItem']),
+		...mapActions(['checkAllFn','delGoodsFn']),
+		async getData(){
+			
+		    let res = await http.$axios({
+		    	url:'/api/selectCart',
+		        method:'post',
+		        headers:{
+		            token:true
+		        },
+		    })	
+		
+			res.data.forEach(v=>{
+			    v['checked']=true;
+				
+			})	
+			
+		    this.cartList(res.data);
+		},
+		isNavBar(){
+		    this.isNavStatus = !this.isNavStatus;
+		},
+		//value 是修改后的数量
+		//item.id 是购物车商品的id
+		changeNum(value,item){
+			http.$axios({
+				url:'/api/updateNum',
+				method:'post',
+				headers:{
+					token:true
+				},
+				data:{
+					id:item.id,
+					num:value
+				}
+			})
+		}
+	 }
 };
 </script>
 <style scoped lang="scss">
