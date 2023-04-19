@@ -2,7 +2,7 @@ import {
 	CART_LIST,
 	CHECK_ALL,
 	UN_CHECK_ALL,
-	CHECK_ITEM
+	CHECK_ITEM,
 } from './mutations-types.js'
 import http from '@/common/api/request.js'
 import {Toast,Dialog} from 'vant'

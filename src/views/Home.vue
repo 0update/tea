@@ -15,7 +15,6 @@
 	<section ref='wrapper'>
 		<!-- div的高度要比section高才能滚动起来 -->
 		<div>
-			
 			<div 
 				v-for='(item,index) in newData'
 				:key='index'
@@ -137,8 +136,6 @@ export default {
 			  click:true
 			})
 		})
-
-		
 	},
 	changeTab(item,index){
 		this.addData(index)//methods中的对象都会给vue管理，通过this可以找到

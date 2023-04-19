@@ -100,6 +100,26 @@ const routes = [
     component: () =>
       import("../views/login/Register.vue"),
   },
+  {
+    path: "/path",
+    name: "Path",
+  	children:[
+  		{
+  			path: "/",
+  			name: "pathindex",
+  			component: () =>
+  			  import("@/views/path/Path-Index.vue"),
+  		},
+		{
+			path: "path-list",
+			name: "path-list",
+			component: () =>
+			  import("../views/path/Path-List.vue"),
+		}
+  	],
+    component: () =>
+      import("@/views/Path.vue"),
+  },
 ];
 
 const router = new VueRouter({

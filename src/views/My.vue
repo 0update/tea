@@ -11,7 +11,7 @@
 		</header>
 		<section>
 			<ul>
-				<li>地址管理</li>
+				<li @click='goPath'>地址管理</li>
 				<li v-if='loginStatus' @click='loginOut'>退出登录</li>
 			</ul>
 		</section>
@@ -34,10 +34,13 @@ export default {
 	})
   },
   methods:{
+	   ...mapMutations(['loginOut']),
 	  goLogin(){
 		  this.$router.push('/login');
 	  },
-	   ...mapMutations(['loginOut'])
+	  goPath(){
+	      this.$router.push('/path');
+	  }
   }
 };
 </script>

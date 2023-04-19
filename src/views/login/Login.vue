@@ -110,10 +110,8 @@ export default{
 			}).then(res=>{
 				if( !res.success ) return;
 				console.log( res );
-			})
-			
-		}
-		
+			})			
+		}		
 	},
 	//注册
 	goRegister(){
