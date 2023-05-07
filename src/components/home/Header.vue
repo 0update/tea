@@ -1,7 +1,7 @@
 <template>
 	<header>
 		<h1>
-			<img src="@/assets/images/如意淘.png" alt="">
+			<img src="@/assets/images/log.png" alt="">
 		</h1>
 		<div class='search' @click="goSearch">
 			<i class='iconfont icon-fangdajing'></i>
@@ -31,22 +31,32 @@ header{
 	background-color: #b0352f;
 }
 header h1{
-	padding:0 0.266666rem;
-	width:3.2rem;
-	height: 1.333333rem;
+	width: 1.75rem;
+	height: 1.2rem;
+	align-items: center;
+	
 }
 header h1 img{
-	width: 100%;
-	height: 100%;
+	width: 1.8rem;
+	height: 1rem;
 }
 .search{
-	display: flex;
-	align-items: center;
-	width: 5rem;
-	height: 0.8rem;
-	background-color: #FFFFFF;
-	border-radius: 12px;
-}
+		display: flex;
+		align-items: center;
+		flex: 1;
+		padding:0.16rem 0.266666rem;
+		background-color: #FFFFFF;
+		border-radius: 0.64rem;
+		i{
+			padding-right: 0.16rem;
+			color:#666;
+			font-size:0.48rem;
+		}
+		span{
+			color:#666;
+			font-size:0.373333rem;
+		}
+	}
 .search i {
 	padding:0 0.16rem;
 	color:#ccc;
@@ -55,8 +65,9 @@ header h1 img{
 	font-size:0.373333rem;
 	color:#ccc;
 }
+
 .kefu i{
-	font-size:0.96rem;
+	font-size:0.9rem;
 	color:#fff;
 }
 

@@ -88,11 +88,6 @@ export default {
   },
   created(){
 	this.getData();
-	// axios({
-	// 	url:'/api/home'
-	// }).then(res=>{
-	// 	console.log(res)
-	// })
   },
   mounted(){
 	
@@ -100,8 +95,6 @@ export default {
   methods:{
 	
 	async getData(){
-		
-	
 		let res = await http.$axios({
 			url:'/api/index_list/0/data/1',
 		});

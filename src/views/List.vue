@@ -9,7 +9,7 @@
 				<span>搜您喜欢的...</span>
 			</div>
 			<div class='go-home'>
-				<img src="@/assets/images/home.png" alt="">
+				<img src="/images/home_light.png" alt="">
 			</div>
 		</header>
 		<section>
@@ -28,7 +28,10 @@
 			</div>
 			
 			<div class='list-r' ref="right">
-				<div >
+				<div>
+					<div class="right-top">
+						<img src="/images/fl.jpg" alt="">
+					</div>
 					<ul
 						v-for='(item,index) in rightData'
 						:key='index'
@@ -190,11 +193,16 @@ header{
 		}
 	}
 	.go-home{
+		align-items: center;
+		justify-content: center;
+		width: 0.6rem;
+		height: 0.6rem;
 		padding: 0 0.266666rem;
-		line-height: 1.173333rem;
 		img{
-			width: 0.48rem;
-			height: 0.48rem;
+			
+			width: 0.6rem;
+			height: 0.6rem;
+	
 		}
 	}
 }
@@ -230,11 +238,19 @@ section{
 .list-r{
 	flex:1;
 	overflow: hidden;
+	.right-top{
+		padding: 8px;
+		img{
+			width: 100%;
+			height: 3.5rem;
+		}
+
+	}
 	.shop-list{
 		text-align: center;
-		h2{
+		h2{			
 			padding:0.533333rem 0;
-			font-size:0.64rem;
+			font-size:0.5rem;
 			font-weight: 400;
 		}
 		.r-content{

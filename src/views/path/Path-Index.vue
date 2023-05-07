@@ -33,7 +33,13 @@ import Header from '@/components/path/Header.vue'
 import Tabbar from '@/components/common/Tabbar.vue'
 import http from '@/common/api/request.js'
 import {mapState,mapMutations} from 'vuex'
+import bus from '@/common/bus.js'
 export default{
+	data () {
+	    return {
+	        pathStatus:false
+	    }
+	},
 	components:{
 		Header,
 		Tabbar
@@ -44,6 +50,10 @@ export default{
 	})
 	},
 	created(){
+		//从订单页面进来的
+		if( this.$route.query.type == 'select' ){
+		    this.pathStatus = true;
+		}
 	    this.getData();
 	},
 	methods:{
@@ -60,7 +70,13 @@ export default{
 	    })
 	},
 	    goList(option){
-		  console.log(option)
+		 //this.pathStatus为true代表从订单页面进入的：选择状态
+		 if( this.pathStatus ){
+		     bus.$emit('selectPath', JSON.stringify(option) );
+			 console.log(JSON.stringify(option));
+		     this.$router.back();
+		     return;
+		 }		  
 	      this.$router.push({
 	          name:'path-list',
 	          params:{

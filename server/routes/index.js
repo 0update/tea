@@ -4,9 +4,290 @@ var connection=require('../db/sql');
 var user=require('../db/userSql');
 var QcloudSms = require("qcloudsms_js");
 let jwt = require('jsonwebtoken');
+//引入支付宝配置文件
+const alipaySdk = require('../db/alipay.js');
+const AlipayFormData = require('alipay-sdk/lib/form').default;
+// const axios = require('axios');
+const axios=require('axios');
 router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
 });
+function getTimeToken( exp ){   
+    let getTime = parseInt(  new Date().getTime() / 1000 ); 
+    if(  getTime - exp  >  60 ){
+        return true;
+    }   
+} 
+//支付状态
+router.post('/api/successPayment',function(req,res,next){
+    //token
+    let token = req.headers.token;
+    let tokenObj = jwt.decode(token);
+    //订单号
+    let out_trade_no = req.body.out_trade_no;
+    let trade_no = req.body.trade_no;
+    //支付宝配置
+    const formData = new AlipayFormData();
+    // 调用 setMethod 并传入 get，会返回可以跳转到支付页面的 url
+    formData.setMethod('get');
+    //支付时信息
+    formData.addField('bizContent', {
+      out_trade_no,
+      trade_no
+    });
+    //返回promise
+    const result = alipaySdk.exec(
+      'alipay.trade.query',
+      {},
+      { formData: formData },
+    );
+    //后端请求支付宝
+    result.then(resData=>{
+        axios({
+            method:'GET',
+            url:resData
+        }).then(data=>{
+            let responseCode = data.data.alipay_trade_query_response;
+            if(  responseCode.code == '10000' ){
+                switch(  responseCode.trade_status  ){
+                    case 'WAIT_BUYER_PAY':
+                        res.send({
+                            data:{
+                                code:0,
+                                data:{
+                                    msg:'支付宝有交易记录，没付款'
+                                }
+                            }
+                        })
+                    break;
+                    
+                    case 'TRADE_CLOSED':
+                        res.send({
+                            data:{
+                                code:1,
+                                data:{
+                                    msg:'交易关闭'
+                                }
+                            }
+                        })
+                    break;
+                    
+                    case 'TRADE_FINISHED':
+                        connection.query(`select * from user where tel = ${tokenObj.tel}`,function(error,results){
+                            //用户id
+                            let uId = results[0].id;
+                            connection.query(`select * from store_order where uId = ${uId} and order_id = ${out_trade_no}`,function(err,result){
+                                let id = result[0].id;
+                                //订单的状态修改掉2==》3
+                                connection.query(`update store_order set order_status = replace(order_status,'2','3') where id = ${id}`,function(){
+                                    res.send({
+                                        data:{
+                                            code:2,
+                                            data:{
+                                                msg:'交易完成'
+                                            }
+                                        }
+                                    })
+                                })
+                            })
+                        })
+                    break;
+                    
+                    case 'TRADE_SUCCESS':
+                        connection.query(`select * from user where tel = ${tokenObj.tel}`,function(error,results){
+                            //用户id
+                            let uId = results[0].id;
+                            connection.query(`select * from store_order where uId = ${uId} and order_id = ${out_trade_no}`,function(err,result){
+                                let id = result[0].id;
+                                //订单的状态修改掉2==》3
+                                connection.query(`update store_order set order_status = replace(order_status,'2','3') where id = ${id}`,function(){
+                                    res.send({
+                                        data:{
+                                            code:2,
+                                            data:{
+                                                msg:'交易完成'
+                                            }
+                                        }
+                                    })
+                                })
+                            })
+                        })
+                    break;
+                }
+            }else if( responseCode.code == '40004' ){
+                res.send({
+                    data:{
+                        code:4,
+                        msg:'交易不存在'
+                    }
+                })
+            }
+        }).catch( err=>{
+            res.send({
+                data:{
+                    code:500,
+                    msg:'交易失败',
+                    err
+                }
+            })
+        })
+    })
+})
+
+//发起支付
+router.post('/api/payment',function(req,res,next){
+    //订单号
+    let orderId = req.body.orderId;
+    //商品总价
+    let price = req.body.price;
+    //购买商品的名称
+    let name = req.body.name;
+    //开始对接支付宝API
+    const formData = new AlipayFormData();
+    // 调用 setMethod 并传入 get，会返回可以跳转到支付页面的 url
+    formData.setMethod('get');
+    //支付时信息
+    formData.addField('bizContent', {
+      outTradeNo: orderId,//订单号
+      productCode: 'FAST_INSTANT_TRADE_PAY',//写死的
+      totalAmount: price,//价格
+      subject: name,//商品名称
+    });
+    //支付成功或者失败跳转的链接
+    formData.addField('returnUrl', 'http://localhost:8080/payment');
+    //返回promise
+    const result = alipaySdk.exec(
+      'alipay.trade.page.pay',
+      {},
+      { formData: formData },
+    );
+    //对接支付宝成功，支付宝方返回的数据
+    result.then(resp=>{
+        res.send({
+            data:{
+                code:200,
+                success:true,
+                msg:'支付中',
+                paymentUrl : resp
+            }
+        })
+    })
+})
+//修改订单状态
+router.post('/api/submitOrder',function(req,res,next){
+    //token
+    let token = req.headers.token;
+    let tokenObj = jwt.decode(token);
+    //订单号
+    let orderId = req.body.orderId;
+    //购物车选中的商品id
+    let shopArr = req.body.shopArr;
+    //查询用户
+    connection.query(`select * from user where tel = ${tokenObj.tel}`,function(error,results){
+        //用户id
+        let uId = results[0].id;
+        connection.query(`select * from store_order where uId = ${uId} and order_id = ${orderId}`,function(err,result){
+            //订单的数据库id
+            let id = result[0].id;
+            //修改订单状态 1==>2
+            connection.query(`update store_order set order_status = replace(order_status,'1','2') where id = ${id}`,function(e,r){
+                //购物车数据删除
+                shopArr.forEach(v=>{
+                    connection.query(`delete from goods_cart where id = ${v}`,function(){
+                     
+                    })
+                })
+				//如果写在foreach里会报错，因为请求了三次请求头
+				res.send({
+				    data:{
+				        code:200,
+				        success:true
+				    }
+				})
+            })
+        })
+    })
+    
+})
+
+router.post('/api/selectOrder',function(req,res,next){
+    //接收前端给后端的订单号
+    let orderId = req.body.orderId;
+    connection.query(`select * from store_order where order_id='${orderId}'`,function(err,result){
+         res.send({
+            data:{
+                 success:true,
+                 code:200,
+                 data:result
+            }
+        })
+    })
+})
+
+//生成一个订单
+router.post('/api/addOrder',function(req,res,next){
+    //token
+    let token = req.headers.token;
+    let tokenObj = jwt.decode(token);
+    //前端给后端的数据
+    let goodsArr = req.body.arr;
+    //生成订单号order_id，规则：时间戳 + 6为随机数
+    function setTimeDateFmt( s ){
+        return s < 10 ? '0' + s : s
+    }
+    function randomNumber(){
+        const now = new Date();
+        let month = now.getMonth() + 1;
+        let day = now.getDate();
+        let hour = now.getHours();
+        let minutes = now.getMinutes();
+        let seconds = now.getSeconds();
+        month = setTimeDateFmt(month);
+        day = setTimeDateFmt(day);
+        hour = setTimeDateFmt(hour);
+        minutes = setTimeDateFmt(minutes);
+        seconds = setTimeDateFmt(seconds);
+        let orderCode = now.getFullYear().toString() + month.toString() + day + hour + minutes + seconds + (Math.round(Math.random() * 1000000 )).toString();
+        return orderCode;
+    }
+    /*
+    未支付：1
+    待支付：2
+    支付成功：3
+    支付失败：4 | 0
+    */
+    //商品列表名称
+    let goodsName = [];
+    //订单商品总金额
+    let goodsPrice = 0;
+    //订单商品总数量
+    let goodsNum = 0;
+	// 订单号
+	let orderId = randomNumber();
+    goodsArr.forEach(v=>{
+        goodsName.push( v.goods_name );
+        goodsPrice += v.goods_price * v.goods_num;
+        goodsNum += parseInt(v.goods_num);
+    })
+    //查询当前用户
+    connection.query(`select * from user where tel = ${tokenObj.tel}`,function(error,results){
+        //用户id
+        let uId = results[0].id;
+        connection.query(`insert into store_order (order_id,goods_name,goods_price,goods_num,order_status,uId) values ('${orderId}','${goodsName}','${goodsPrice}','${goodsNum}','1',${uId})`,function(){
+             connection.query(`select * from store_order where uId = ${uId} and order_id=${orderId}`,function(err,result){
+                 res.send({
+                     data:{
+                         success:true,
+                         code:200,
+                         data:result
+                     }
+                 })
+             })
+        })
+    })
+   
+})
+
 //删除收货地址
 router.post('/api/deleteAddress',function(req,res,next){
     let id = req.body.id;
@@ -128,9 +409,9 @@ router.post('/api/addAddress',function(req,res,next){
 			    })
 			})
 		}else{
-			console.log(results.length)
-			 if( results.length > 0 ){
-				 connection.query(`select * from address where uId = ${uId} and isDefault = ${isDefault}`,function(err,result){
+			connection.query(`select * from address where uId = ${uId} and isDefault = ${isDefault}`,function(err,result){
+			 if( result.length > 0 ){
+				 console.log(results.length)
 				   let addressId = result[0].id;
 				   connection.query(`update address set isDefault = replace(isDefault,'1','0') where id = ${addressId}`,function(){
 				       connection.query(`insert into address (uId,name,tel,province,city,county,addressDetail,isDefault,areaCode) values (${uId},"${name}","${tel}","${province}","${city}","${county}","${addressDetail}","${isDefault}","${areaCode}")`,function(e,r){
@@ -139,24 +420,23 @@ router.post('/api/addAddress',function(req,res,next){
 				                   code:200,
 				                   success:true,
 				                   msg:'收货地址添加成功'
-				               }
-				           })
-				       })
-				   })
-				 })
-			 }else{
+								}
+							})
+						})
+					})
+				}else{
 				 connection.query(`insert into address (uId,name,tel,province,city,county,addressDetail,isDefault,areaCode) values (${uId},"${name}","${tel}","${province}","${city}","${county}","${addressDetail}","${isDefault}","${areaCode}")`,function(err,result){
 				     res.send({
 				         data:{
 				             code:200,
 				             success:true,
 				             msg:'收货地址添加成功'
-				         }
-				     })
-				 })
-			 }
-		}
-		
+							}
+						})
+					})
+				}
+			})
+		}	
 	})
 })
 
@@ -189,6 +469,14 @@ router.post('/api/addCart',function(req,res,next){
     //token
     let token = req.headers.token;
     let tokenObj = jwt.decode(token);
+	// //如果执行，就证明token过期了
+	// if(  getTimeToken(tokenObj.exp) ){
+	//     res.send({
+	//         data:{
+	//             code:1000
+	//         }
+	//     })
+	// }
     //查询用户
     connection.query(`select * from user where tel = ${tokenObj.tel}`,function(error,results){
         //用户id
@@ -395,7 +683,6 @@ router.post('/api/addUser',function(req,res,next){
 
 //验证码
 router.post('/api/code',function(req,res,next){
-	console.log('11');
 	let tel = req.body.phone;
 	
 	// 短信应用SDK AppID
@@ -438,7 +725,7 @@ router.post('/api/code',function(req,res,next){
 	  params, smsSign, "", "", callback);  // 签名参数不能为空串
 	
 })
-//登陆
+//登录
 router.post('/api/login',function(req,res,next){
 	//后端要接收前端传递过来的值
 	let params = {
@@ -483,7 +770,6 @@ router.post('/api/login',function(req,res,next){
 				}
 			})
 		}
-		
 	})
 })
 //搜索
@@ -501,162 +787,152 @@ router.get('/api/goods/shopList',function(req,res,next){
 //首页铁观音的数据
 router.get('/api/index_list/2/data/1', function(req, res, next) {
 	res.send({
-		data:{			
-		msg:'暂无数据'
-		}
-	})
-	// res.send({
-	// 	// 状态码
-	// 	code:0,
-	// 	data:[
-	// 		{
-	// 			id:1,
-	// 			type:'adList',
-	// 			data:[
-	// 				{
-	// 					id:1,
-	// 					imgUrl:'./images/tgy.jpeg'
-	// 				},
-	// 				{
-	// 					id:2,
-	// 					imgUrl:'./images/tgy.jpeg'
-	// 				}
-	// 			]
-	// 		},
-	// 		{
-	// 			id:1,
-	// 			type:'iconsList',
-	// 			data:[
-	// 				{
-	// 					id:1,
-	// 					title:'自饮茶',
-	// 					imgUrl:'./images/icons1.png'
-	// 				},
-	// 				{
-	// 					id:2,
-	// 					title:'茶具',
-	// 					imgUrl:'./images/icons2.png'
-	// 				},
-	// 				{
-	// 					id:3,
-	// 					title:'茶礼盒',
-	// 					imgUrl:'./images/icons3.png'
-	// 				},
-	// 				{
-	// 					id:4,
-	// 					title:'领福利',
-	// 					imgUrl:'./images/icons4.png'
-	// 				},
-	// 				{
-	// 					id:5,
-	// 					title:'官方验证',
-	// 					imgUrl:'./images/icons5.png'
-	// 				}
-	// 			]
-	// 		},
-	// 		{
-	// 			id:3,
-	// 			type:'likeList',
-	// 			data:[
-	// 				{
-	// 					id:1,
-	// 					imgUrl:'./images/like.jpeg',
-	// 					name:'建盏茶具套装 红色芝麻毫 12件套',
-	// 					price:299
-	// 				},
-	// 				{
-	// 					id:2,
-	// 					imgUrl:'./images/like.jpeg',
-	// 					name:'建盏茶具套装 红色芝麻毫 12件套',
-	// 					price:299
-	// 				},
-	// 				{
-	// 					id:3,
-	// 					imgUrl:'./images/like3.jpeg',
-	// 					name:'建盏茶具套装 红色芝麻毫 12件套',
-	// 					price:299
-	// 				},
-	// 				{
-	// 					id:4,
-	// 					imgUrl:'./images/like.jpeg',
-	// 					name:'建盏茶具套装 红色芝麻毫 12件套',
-	// 					price:299
-	// 				},
-	// 				{
-	// 					id:5,
-	// 					imgUrl:'./images/like.jpeg',
-	// 					name:'建盏茶具套装 红色芝麻毫 12件套',
-	// 					price:299
-	// 				},
-	// 				{
-	// 					id:6,
-	// 					imgUrl:'./images/like.jpeg',
-	// 					name:'建盏茶具套装 红色芝麻毫 12件套',
-	// 					price:299
-	// 				},
-	// 				{
-	// 					id:7,
-	// 					imgUrl:'./images/like.jpeg',
-	// 					name:'建盏茶具套装 红色芝麻毫 12件套',
-	// 					price:299
-	// 				}
-	// 			]
-	// 		}
+		// 状态码
+		code:0,
+		data:[
+			{
+				id:1,
+				type:'adList',
+				data:[
+					{
+						id:1,
+						imgUrl:'./images/tgy.jpeg'
+					},
+					{
+						id:2,
+						imgUrl:'./images/tgy.jpeg'
+					}
+				]
+			},
+			{
+				id:1,
+				type:'iconsList',
+				data:[
+					{
+						id:1,
+						title:'自饮茶',
+						imgUrl:'./images/icons1.png'
+					},
+					{
+						id:2,
+						title:'茶具',
+						imgUrl:'./images/icons2.png'
+					},
+					{
+						id:3,
+						title:'茶礼盒',
+						imgUrl:'./images/icons3.png'
+					},
+					{
+						id:4,
+						title:'领福利',
+						imgUrl:'./images/icons4.png'
+					},
+					{
+						id:5,
+						title:'官方验证',
+						imgUrl:'./images/icons5.png'
+					}
+				]
+			},
+			{
+				id:3,
+				type:'likeList',
+				data:[
+					{
+						id:1,
+						imgUrl:'./images/like.jpeg',
+						name:'建盏茶具套装 红色芝麻毫 12件套',
+						price:299
+					},
+					{
+						id:2,
+						imgUrl:'./images/like.jpeg',
+						name:'建盏茶具套装 红色芝麻毫 12件套',
+						price:299
+					},
+					{
+						id:3,
+						imgUrl:'./images/like3.jpeg',
+						name:'建盏茶具套装 红色芝麻毫 12件套',
+						price:299
+					},
+					{
+						id:4,
+						imgUrl:'./images/like.jpeg',
+						name:'建盏茶具套装 红色芝麻毫 12件套',
+						price:299
+					},
+					{
+						id:5,
+						imgUrl:'./images/like.jpeg',
+						name:'建盏茶具套装 红色芝麻毫 12件套',
+						price:299
+					},
+					{
+						id:6,
+						imgUrl:'./images/like.jpeg',
+						name:'建盏茶具套装 红色芝麻毫 12件套',
+						price:299
+					},
+					{
+						id:7,
+						imgUrl:'./images/like.jpeg',
+						name:'建盏茶具套装 红色芝麻毫 12件套',
+						price:299
+					}
+				]
+			}
 			
-	// 	]
-	// })
+		]
+	})
 
 })
 //首页大红袍的数据
 router.get('/api/index_list/1/data/1', function(req, res, next) {
 	res.send({
-		data:{			
-		msg:'暂无数据'
-		}
+		code:0,
+		data:[
+			{
+				id:1,
+				type:'adList',
+				data:[
+					{
+						id:1,
+						imgUrl:'./images/dhp.jpeg'
+					},
+					{
+						id:2,
+						imgUrl:'./images/dhp.jpeg'
+					}
+				]
+			},
+			{
+				id:2,
+				type:'likeList',
+				data:[
+					{
+						id:1,
+						imgUrl:'./images/like.jpeg',
+						name:'建盏茶具套装 红色芝麻毫 12件套',
+						price:299
+					},
+					{
+						id:2,
+						imgUrl:'./images/like.jpeg',
+						name:'建盏茶具套装 红色芝麻毫 12件套',
+						price:299
+					},
+					{
+						id:3,
+						imgUrl:'./images/like.jpeg',
+						name:'建盏茶具套装 红色芝麻毫 12件套',
+						price:299
+					}
+				]
+			}			
+		]
 	})
-	// res.send({
-	// 	code:0,
-	// 	data:[
-	// 		{
-	// 			id:1,
-	// 			type:'adList',
-	// 			data:[
-	// 				{
-	// 					id:1,
-	// 					imgUrl:'./images/dhp.jpeg'
-	// 				},
-	// 				{
-	// 					id:2,
-	// 					imgUrl:'./images/dhp.jpeg'
-	// 				}
-	// 			]
-	// 		},
-	// 		{
-	// 			id:2,
-	// 			type:'likeList',
-	// 			data:[
-	// 				{
-	// 					id:1,
-	// 					imgUrl:'./images/like.jpeg',
-	// 					name:'建盏茶具套装 红色芝麻毫 12件套',
-	// 					price:299
-	// 				},
-	// 				{
-	// 					id:2,
-	// 					imgUrl:'./images/like.jpeg',
-	// 					name:'建盏茶具套装 红色芝麻毫 12件套',
-	// 					price:299
-	// 				},
-	// 				{
-	// 					id:3,
-	// 					imgUrl:'./images/like.jpeg',
-	// 					name:'建盏茶具套装 红色芝麻毫 12件套',
-	// 					price:299
-	// 				}
-	// 			]
-	// 		}			
-	// 	]
-	// })
 })
 //首页推荐的数据
 router.get('/api/index_list/0/data/1', function(req, res, next) {
@@ -665,12 +941,12 @@ router.get('/api/index_list/0/data/1', function(req, res, next) {
 		data:{
 			topBar:[
 				{id:0,label:'推荐'},
-				{id:1,label:'美妆'},
-				{id:2,label:'电器'},
-				{id:3,label:'服饰'},
-				{id:4,label:'手机'},
-				{id:5,label:'奢品'},
-				{id:6,label:'洗护'},
+				{id:1,label:'大红袍'},
+				{id:2,label:'金骏眉'},
+				{id:3,label:'绿茶'},
+				{id:4,label:'红茶'},
+				{id:5,label:'白茶'},
+				{id:6,label:'普洱'},
 			],
 			data:[
 				//swiper
@@ -678,8 +954,8 @@ router.get('/api/index_list/0/data/1', function(req, res, next) {
 					id:0,
 					type:'swiperList',
 					data:[
-						{id:0,imgUrl:'./images/a.jpg'},
-						{id:1,imgUrl:'./images/b.png'},
+						{id:0,imgUrl:'./images/swiper1.jpeg'},
+						{id:1,imgUrl:'./images/swiper2.jpeg'},
 						{id:3,imgUrl:'./images/swiper3.jpeg'}
 					]
 				},
@@ -798,27 +1074,27 @@ router.get('/api/goods/list',function(req,res,next){
 							{
 								id:1,
 								name:'功夫茶具',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/chaju.jpg'
 							},
 							{
 								id:3,
-								name:'茶具电器',
-								imgUrl:'./images/list1.jpeg'
+								name:'建盏',
+								imgUrl:'./images/jianzan.jpg'
 							},
 							{
 								id:4,
 								name:'紫砂壶',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/zhihu.jpg'
 							},
 							{
 								id:5,
 								name:'龙井',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/jingjunmei.jpg'
 							},
 							{
 								id:6,
 								name:'武夷岩茶',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/wuyi.jpg'
 							}
 						]
 					}
@@ -838,27 +1114,27 @@ router.get('/api/goods/list',function(req,res,next){
 							{
 								id:0,
 								name:'龙井',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/lvcha1.jpeg'
 							},
 							{
 								id:1,
 								name:'碧螺春',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/lvcha2.jpeg'
 							},
 							{
 								id:3,
 								name:'雀舌',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/lvcha3.jpeg'
 							},
 							{
 								id:4,
 								name:'安吉白茶',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/lvcha4.jpeg'
 							},
 							{
 								id:5,
 								name:'六安瓜片',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/lvcha5.png'
 							}
 						]
 					}
@@ -918,22 +1194,22 @@ router.get('/api/goods/list',function(req,res,next){
 							{
 								id:0,
 								name:'龙井',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/hongcha1.jpeg'
 							},
 							{
 								id:1,
 								name:'碧螺春',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/hongcha2.jpeg'
 							},
 							{
 								id:3,
 								name:'雀舌',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/hongcha3.jpeg'
 							},
 							{
 								id:4,
 								name:'安吉白茶',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/hongcha4.jpeg'
 							},
 							{
 								id:5,
@@ -958,27 +1234,27 @@ router.get('/api/goods/list',function(req,res,next){
 							{
 								id:0,
 								name:'龙井',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/baicha1.jpeg'
 							},
 							{
 								id:1,
 								name:'碧螺春',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/baicha2.jpeg'
 							},
 							{
 								id:3,
 								name:'雀舌',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/baicha3.jpeg'
 							},
 							{
 								id:4,
 								name:'安吉白茶',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/baicha4.jpeg'
 							},
 							{
 								id:5,
 								name:'六安瓜片',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/baicha2.jpeg'
 							}
 						]
 					}
@@ -998,28 +1274,13 @@ router.get('/api/goods/list',function(req,res,next){
 							{
 								id:0,
 								name:'龙井',
-								imgUrl:'./images/list1.jpeg'
+								imgUrl:'./images/puer1.jpeg'
 							},
 							{
 								id:1,
 								name:'碧螺春',
-								imgUrl:'./images/list1.jpeg'
-							},
-							{
-								id:3,
-								name:'雀舌',
-								imgUrl:'./images/list1.jpeg'
-							},
-							{
-								id:4,
-								name:'安吉白茶',
-								imgUrl:'./images/list1.jpeg'
-							},
-							{
-								id:5,
-								name:'六安瓜片',
-								imgUrl:'./images/list1.jpeg'
-							}
+								imgUrl:'./images/puer2.jpeg'
+							},						
 						]
 					}
 				]

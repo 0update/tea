@@ -10,6 +10,7 @@ export default{
     state:{
 		//购物车的数据条数，购物车有多少条list就有多少条
         list:[],
+		//选择的数据，存储的是购物车id
 		selectList:[],		
     },
     getters:{

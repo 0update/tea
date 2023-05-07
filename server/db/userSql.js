@@ -18,10 +18,11 @@ const User = {
 	    //用户信息
 	    let payload = {tel:userTel};
 	    //口令
-	    let secret = 'xiaoluxian';
+	    let secret = 'JM';
 	    //生成token
-	    let token = jwt.sign(payload,secret);
-	    
+	    let token = jwt.sign(payload,secret,{
+            expiresIn:60
+        });   
 		return 'insert into user (tel,pwd,imgUrl,nickName,token) values ("'+userTel+'","'+userPwd+'","/images/user.jpeg","'+userTel+'","'+token+'")';
 	}
 }

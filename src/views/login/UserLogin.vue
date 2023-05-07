@@ -25,7 +25,6 @@ import Header from './Header'
 import { Toast } from 'mint-ui';
 import http from '@/common/api/request.js'
 import {mapMutations} from 'vuex'
-
 export default{
 	data () {
 		return {
@@ -57,8 +56,7 @@ export default{
 			this.$router.push('/recovery');
 		},
 		//点击登录按钮
-	login(){
-		
+	login(){		
 		//前端验证
 		if( !this.validate('userTel') ) return;
 		if( !this.validate('userPwd') ) return;
@@ -71,8 +69,6 @@ export default{
 				userPwd:this.userPwd
 			}
 		}).then(res=>{
-			//提示信息
-			Toast(res.msg);
 			//登录失败
 			if( !res.success ) return;
 			//登录成功 ==》跳转页面，存储用户信息		

@@ -24,6 +24,7 @@ import Tabbar from '@/components/common/Tabbar.vue'
 import { Toast } from 'mint-ui';
 import http from '@/common/api/request.js'
 import Header from './Header'
+import {mapMutations} from 'vuex'
 export default{
 	data(){
 		return {
@@ -47,6 +48,7 @@ export default{
 		Tabbar
 	},
 	methods:{
+		...mapMutations(['userLogin']),
 		goUserLogin(){
 			this.$router.push('/userLogin');
 		},
@@ -108,8 +110,16 @@ export default{
 					phone:this.userTel
 				}
 			}).then(res=>{
+				// if( !res.success ) return;
+				// console.log( res );
+				//提示信息
+				Toast(res.msg);
+				//登录失败
 				if( !res.success ) return;
-				console.log( res );
+				//登录成功 ==》跳转页面，存储用户信息		
+				this.userLogin( res.data );
+				//跳转到我的页面中
+				this.$router.push('/my');
 			})			
 		}		
 	},

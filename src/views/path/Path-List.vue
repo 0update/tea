@@ -38,7 +38,7 @@ export default{
     data() {
         return {
 			AddressInfo:{},
-			 pathStatus:false,
+			pathStatus:false,
             areaList:{
                 province_list: {
                   110000: '北京市',

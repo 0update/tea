@@ -46,13 +46,14 @@
                 </div>
             </div>
 			<div class='order' v-if='isNavStatus' @click='delGoodsFn'>删除</div>
-            <div class='order' v-else>去结算</div>
+            <div class='order' @click='goOrder' v-else>去结算</div>
         </footer>
 	</div>
 </template>
 
 <script>
 import {mapState,mapMutations,mapGetters,mapActions} from 'vuex'
+import {Toast} from 'vant'
 import http from '@/common/api/request.js'
 export default {
     name: "Cart",
@@ -67,33 +68,76 @@ export default {
 	},
 	computed:{
 	 ...mapState({
-	     list:state=>state.cart.list
+	     list:state=>state.cart.list,
+		 selectList:state=>state.cart.selectList
 	 }) ,
-	 ...mapGetters(['isCheckedAll','total'])
+	 ...mapGetters(['isCheckedAll','total']),
+	 goodsList(){
+	     return this.selectList.map(id=>{
+	         return this.list.find(v=>v.id == id);
+	     })
+	 }
 	},
 	 methods:{
-		...mapMutations(['cartList','checkItem']),
+		...mapMutations(['cartList','checkItem','initOrder']),
 		...mapActions(['checkAllFn','delGoodsFn']),
-		async getData(){
+	goOrder(){
+	    
+	    if( !this.selectList.length ){
+	        Toast('请至少选择一件商品');
+	        return;
+	    }
+		let newList = [];
+		this.list.forEach(item=>{
+		    this.selectList.filter(v=>{
+		        if( v == item.id ){
+		            newList.push( item );
+		        }
+		    })
+		})
+		//生成一个订单
+		http.$axios({
+			url:'/api/addOrder',
+		    method:'post',
+		    headers:{
+		        token:true
+		    },
+		    data:{
+		        arr:newList
+		    }
+		}).then(res=>{
+		    if( !res.success ) return;
+			//订单号
+			this.initOrder(res.data);
+		    //跳转订单页面
+		    this.$router.push({
+		        path:'/order',
+		        query:{
+		            detail:JSON.stringify( this.selectList ),
+					goodsList:JSON.stringify( this.goodsList )
+		        }
+		    });
+			console.log(this.goodsList)
+		})
+	},
+	async getData(){
+		let res = await http.$axios({
+			url:'/api/selectCart',
+			method:'post',
+			headers:{
+				token:true
+			},
+		})		
+		res.data.forEach(v=>{
+			v['checked']=true;
 			
-		    let res = await http.$axios({
-		    	url:'/api/selectCart',
-		        method:'post',
-		        headers:{
-		            token:true
-		        },
-		    })	
+		})	
 		
-			res.data.forEach(v=>{
-			    v['checked']=true;
-				
-			})	
-			
-		    this.cartList(res.data);
-		},
-		isNavBar(){
-		    this.isNavStatus = !this.isNavStatus;
-		},
+		this.cartList(res.data);
+	},
+	isNavBar(){
+		this.isNavStatus = !this.isNavStatus;
+	},
 		//value 是修改后的数量
 		//item.id 是购物车商品的id
 		changeNum(value,item){
@@ -109,7 +153,7 @@ export default {
 				}
 			})
 		}
-	 }
+	}
 };
 </script>
 <style scoped lang="scss">
