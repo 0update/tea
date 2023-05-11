@@ -137,6 +137,7 @@ section{
 	flex-direction: column;
 	align-items: center;
 	background-color:#f5f5f5;
+	font-size:0.32rem;
 	div{
 		margin:0.266666rem 0;
 		width: 8.933333rem;
@@ -174,6 +175,7 @@ section{
 		line-height: 44px;
 		color:#fff;
 		text-align: center;
+		font-size: 0.48rem;
 		background-color: #b0352f;
 		border-radius: 6px;
 	}

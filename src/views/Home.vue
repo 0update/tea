@@ -1,5 +1,5 @@
 <template>
-  <div class="home">
+  <div class="home">	
 	<div class='headers'>
 		<div class='headers-main'>
 			<Header></Header>
@@ -9,7 +9,7 @@
 				:options="options"
 				@change='changeTab'
 			>
-			</ly-tab>
+			</ly-tab>			
 		</div>
 	</div>
 	<section ref='wrapper'>
@@ -139,7 +139,7 @@ export default {
 </script>
 
 <style scoped>
-.home{
+/* .home{
 	display: flex;
 	flex-direction: column;
 	width: 100vw;
@@ -154,14 +154,130 @@ export default {
 	position: fixed;
 	left:0;
 	top:0;
-}
-section{
-	/* 弹性元素 */
+} */
+/* section{
 	flex:1;
 	overflow: hidden;
-}
-::v-deep .ly-tabbar{
+} */
+/* ::v-deep .ly-tabbar{
 	box-shadow:none;
 	border-bottom:none;
+} */
+.home {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+.headers {
+  width: 100%;
+  height: 2.346667rem;
+}
+::v-deep .ly-tab {
+  height: 1.173333rem!important;
+  top: 1.173333rem;
+  border-bottom: 0;
+  box-shadow: none;
+  background-color: #fff;
+}
+::v-deep .ly-tab-list {
+  padding: .32rem .266667rem;
+}
+.ly-tab /deep/ .ly-tabbar {
+  border-bottom: 0;
+  box-shadow: none;
+}
+.ly-tab /deep/ .ly-tab-item {
+  font-size: .4rem;
+}
+.sec_content {
+  background-color: #f5f5f5;
+  flex: 1;
+  overflow: hidden;
+}
+.headers-main {
+  position: fixed;
+  width: 100%;
+  left: 0;
+  top: 0;
+}
+.chaju {
+  margin-top: .4rem;
+}
+.chaju img {
+  display: block;
+  width: 100%;
+}
+.chaju .chaju-home {
+  background: #fff;
+  padding: 0.4rem 0.4rem 0.4rem 0;
+}
+.chaju .chaju-home ul {
+  display: flex;
+}
+.chaju .chaju-home ul li {
+  float: left;
+  width: 3.5rem;
+  margin-left: 0.4rem;
+  text-align: center;
+}
+.chaju-produce img {
+    display: block;
+    width: 100%;
+}
+.chaju-produce .name {
+  padding: .213333rem 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.4rem;
+  color: #333;
+}
+.chaju-produce .price {
+  color: #b0352f;
+  height: 0.5rem;
+  line-height: 0.5rem;
+}
+.chaju-produce .price span {
+  font-size: 0.32rem;
+}
+.chaju-produce .price b {
+  font-size: 0.5rem;
+}
+.chaju-more {
+  position: relative;
+  background: #f3f3f3;
+}
+.see-more {
+  background: #f3f3f3;
+  position: relative;
+  width: 3.5rem;
+  height: 3.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.see-more div {
+  text-align: center;
+  font-size: 0.32rem;
+}
+.see-more div:first-child {
+  width: 50%;
+  border-bottom: 1px solid #ccc;
+  color: #999;
+  padding-bottom: 0.1rem;
+  margin-bottom: 0.1rem;
+}
+.see-more::after {
+  content: "";
+  position: absolute;
+  margin: .133333rem;
+  border: 1px solid #e4e4e4;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 </style>
