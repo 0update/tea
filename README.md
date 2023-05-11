@@ -11,5 +11,6 @@ vue2 node.js axios sass vant-ui
 # #克服的技术难点
 1.购物车的数据联动
 2.生成订单及连接支付宝沙箱
-
-
+![4f93eb01350004d48b502554b707d7c](https://github.com/0update/tea/assets/96370786/47c377d2-ad70-4f4d-a5fe-e7fc9ac91fc5)
+![3b65669e66567239950055bc0f85cfb](https://github.com/0update/tea/assets/96370786/927b64ee-2880-41b1-844a-2226f5b55ee7)
+![6032adb27cfdf879afdf180088360ea](https://github.com/0update/tea/assets/96370786/60d7c864-776a-445a-b012-3e24ce53f305)
